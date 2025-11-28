@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>BPO Agent Voice Streamer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      width: 380px;
+      min-height: 500px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a1d2e 0%, #16213e 100%);
+      color: #fff;
+      padding: 20px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .logo {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: bold;
+    }
+    .title {
+      flex: 1;
+    }
+    .title h1 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .title p {
+      font-size: 11px;
+      color: #8b9dc3;
+    }
+    .status-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      backdrop-filter: blur(10px);
+    }
+    .status-label {
+      font-size: 12px;
+      color: #8b9dc3;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .status-value {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .status-value.connected {
+      background: rgba(76, 175, 80, 0.2);
+      color: #4caf50;
+      border: 1px solid rgba(76, 175, 80, 0.3);
+    }
+    .status-value.disconnected {
+      background: rgba(244, 67, 54, 0.2);
+      color: #f44336;
+      border: 1px solid rgba(244, 67, 54, 0.3);
+    }
+    .status-value.listening {
+      background: rgba(33, 150, 243, 0.2);
+      color: #2196f3;
+      border: 1px solid rgba(33, 150, 243, 0.3);
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    .status-dot.green {
+      background: #4caf50;
+    }
+    .status-dot.red {
+      background: #f44336;
+    }
+    .status-dot.blue {
+      background: #2196f3;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .visualizer {
+      height: 60px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      margin: 16px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 0 20px;
+    }
+    .bar {
+      width: 4px;
+      height: 20px;
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      border-radius: 2px;
+      animation: wave 1s ease-in-out infinite;
+      opacity: 0.3;
+    }
+    .bar.active {
+      opacity: 1;
+    }
+    .bar:nth-child(1) { animation-delay: 0s; }
+    .bar:nth-child(2) { animation-delay: 0.1s; }
+    .bar:nth-child(3) { animation-delay: 0.2s; }
+    .bar:nth-child(4) { animation-delay: 0.3s; }
+    .bar:nth-child(5) { animation-delay: 0.4s; }
+    .bar:nth-child(6) { animation-delay: 0.3s; }
+    .bar:nth-child(7) { animation-delay: 0.2s; }
+    .bar:nth-child(8) { animation-delay: 0.1s; }
+    @keyframes wave {
+      0%, 100% { height: 20px; }
+      50% { height: 40px; }
+    }
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .btn {
+      flex: 1;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-start {
+      background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+      color: white;
+    }
+    .btn-start:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+    }
+    .btn-stop {
+      background: linear-gradient(135deg, #f44336 0%, #da190b 100%);
+      color: white;
+    }
+    .btn-stop:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .transcript-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 16px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .transcript-card::-webkit-scrollbar {
+      width: 6px;
+    }
+    .transcript-card::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 3px;
+    }
+    .transcript-card::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+    .transcript-item {
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      border-left: 3px solid #4facfe;
+    }
+    .transcript-time {
+      font-size: 10px;
+      color: #8b9dc3;
+      margin-bottom: 4px;
+    }
+    .transcript-text {
+      font-size: 13px;
+      line-height: 1.4;
+      color: #fff;
+    }
+    .no-transcript {
+      text-align: center;
+      color: #8b9dc3;
+      font-size: 12px;
+      padding: 20px;
+    }
+    .footer {
+      margin-top: 16px;
+      text-align: center;
+      font-size: 11px;
+      color: #8b9dc3;
+    }
+    .footer a {
+      color: #4facfe;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">AI</div>
+    <div class="title">
+      <h1>Agent Voice Streamer</h1>
+      <p>Real-time Mic → AI Backend</p>
+    </div>
+  </div>
+
+  <div class="status-card">
+    <div class="status-label">Connection Status</div>
+    <div class="status-value disconnected" id="statusIndicator">
+      <span class="status-dot red"></span>
+      Disconnected
+    </div>
+  </div>
+
+  <div class="visualizer" id="visualizer">
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-start" id="startBtn">
+      🎤 Start
+    </button>
+    <button class="btn btn-stop" id="stopBtn" disabled>
+      ⏹ Stop
+    </button>
+  </div>
+
+  <div class="status-card">
+    <div class="status-label">Transcriptions</div>
+    <div class="transcript-card" id="transcriptCard">
+      <div class="no-transcript">Click "Start" to begin listening...</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Powered by <a href="#">Agent Voice Streamer</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

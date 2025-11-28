@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Java/Spring Boot
+target/
+*.class
+.mvn/
+mvnw
+mvnw.cmd
+.classpath
+.project
+.settings/
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "BPO Agent Voice Streamer",
+  "version": "1.0",
+
+  "permissions": [],
+
+  "host_permissions": [
+    "ws://localhost:8080/*"
+  ],
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "web_accessible_resources": [
+    {
+      "resources": ["audio-worklet.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
