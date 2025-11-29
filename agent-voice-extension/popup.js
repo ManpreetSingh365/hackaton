@@ -9,12 +9,26 @@ let sourceNode = null;
 let workletNode = null;
 let mediaStream = null;
 let isStreaming = false;
+let callEnded = false; // Track if call has ended
+
+// Persistent Alert Store (never auto-clear critical alerts)
+const persistentAlerts = {
+  critical: new Set(), // High-risk, social media, rude language
+  risk: new Set(),     // Priority cases
+  alert: new Set(),    // Missing steps
+  completed: []        // Completed steps (can update)
+};
 
 // UI elements
 const statusIndicator = document.getElementById('statusIndicator');
 const transcriptCard = document.getElementById('transcriptCard');
+const complianceSection = document.getElementById('complianceSection');
+const complianceScore = document.getElementById('complianceScore');
+const complianceAlerts = document.getElementById('complianceAlerts');
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
+const endCallBtn = document.getElementById('endCallBtn');
+const resetBtn = document.getElementById('resetBtn');
 
 /**
  * Update connection status display
@@ -77,7 +91,8 @@ function addTranscript(text) {
 }
 
 /**
- * Update Compliance UI with AI results - Enhanced with color-coded alerts
+ * Update Compliance UI with PERSISTENT ALERTS and severity badges
+ * Alerts stay on screen until explicitly resolved or reset
  */
 function updateComplianceUI(data) {
   const section = document.getElementById('complianceSection');
@@ -121,18 +136,64 @@ function updateComplianceUI(data) {
     }
   }
 
-  // Clear previous alerts
+  // DON'T CLEAR - Use persistent alert system instead
+  // alertsEl.innerHTML = ''; // ❌ REMOVED - This was causing alerts to disappear!
+  
+  // Process new data into persistent store
+  if (result.critical_violations && Array.isArray(result.critical_violations)) {
+    result.critical_violations.forEach(v => persistentAlerts.critical.add(v));
+  }
+  if (result.risk_violations && Array.isArray(result.risk_violations)) {
+    result.risk_violations.forEach(v => persistentAlerts.risk.add(v));
+  }
+  if (result.missing_steps && Array.isArray(result.missing_steps)) {
+    result.missing_steps.forEach(v => persistentAlerts.alert.add(v));
+  }
+  
+  // Remove completed steps from missing
+  if (result.completed_steps && Array.isArray(result.completed_steps)) {
+    result.completed_steps.forEach(step => {
+      persistentAlerts.alert.delete(step);
+    });
+    persistentAlerts.completed = result.completed_steps;
+  }
+  
+  // Clear and rebuild alerts from persistent store
   alertsEl.innerHTML = '';
   
-  // STATUS: IN_PROGRESS - Blue/Progress indicator
-  if (result.status === 'IN_PROGRESS') {
+  // RENDER PERSISTENT CRITICAL ALERTS FIRST (with badges)
+  Array.from(persistentAlerts.critical).forEach(violation => {
     const div = document.createElement('div');
     div.className = 'alert-item';
-    div.style.background = 'rgba(33, 150, 243, 0.15)';
-    div.style.borderLeftColor = '#2196F3';
-    div.style.color = '#64B5F6';
-    div.innerHTML = '📞 <strong>Call In Progress...</strong> Keep going!';
+    div.style.background = 'rgba(244, 67, 54, 0.2)';
+    div.style.borderLeftColor = '#f44336';
+    div.style.color = '#ff8a80';
+    div.innerHTML = '<strong>[🔴 CRITICAL]</strong> ' + violation;
     alertsEl.appendChild(div);
+  });
+  
+  // RENDER RISK ALERTS (with badges)
+  Array.from(persistentAlerts.risk).forEach(violation => {
+    const div = document.createElement('div');
+    div.className = 'alert-item';
+    div.style.background = 'rgba(255, 152, 0, 0.2)';
+    div.style.borderLeftColor = '#ff9800';
+    div.style.color = '#ffcc80';
+    div.innerHTML = '<strong>[🟠 RISK]</strong> ' + violation;
+    alertsEl.appendChild(div);
+  });
+  
+  // UPDATE VISUALIZER TEXT (instead of showing in alerts)
+  const visualizer = document.getElementById('visualizer');
+  if (result.status === 'IN_PROGRESS') {
+    visualizer.setAttribute('data-message', '📞 Call In Progress... Keep going!');
+    callEnded = false;
+  } else if (result.status === 'PASS') {
+    visualizer.setAttribute('data-message', '✅ Call Complete!');
+    callEnded = true;
+  } else if (result.status === 'FAIL') {
+    visualizer.setAttribute('data-message', '❌ Call Failed');
+    callEnded = true;
   }
   
   // HIGH-RISK DETECTION - Red Alert
@@ -195,18 +256,26 @@ function updateComplianceUI(data) {
     }
   }
 
-  // MISSING STEPS - Only show if call is ending or critical (not during IN_PROGRESS)
-  if (result.status !== 'IN_PROGRESS' && result.missing_steps && Array.isArray(result.missing_steps) && result.missing_steps.length > 0) {
-    result.missing_steps.forEach(step => {
-      const div = document.createElement('div');
-      div.className = 'alert-item';
-      div.style.background = 'rgba(244, 67, 54, 0.15)';
-      div.style.borderLeftColor = '#f44336';
-      div.style.color = '#ff8a80';
-      div.innerHTML = '❌ Missing: ' + step;
-      alertsEl.appendChild(div);
-    });
-  }
+  // RENDER PERSISTENT ALERT-LEVEL WARNINGS (missing steps)
+  // Only show "Missing: Closing" if call has ended
+  Array.from(persistentAlerts.alert).forEach(step => {
+    // Skip closing-related alerts if call is still ongoing
+    const isClosingStep = step.toLowerCase().includes('closing') || 
+                          step.toLowerCase().includes('goodbye') || 
+                          step.toLowerCase().includes('thank you');
+    
+    if (isClosingStep && !callEnded) {
+      return; // Don't show closing alerts during active call
+    }
+    
+    const div = document.createElement('div');
+    div.className = 'alert-item';
+    div.style.background = 'rgba(255, 193, 7, 0.15)';
+    div.style.borderLeftColor = '#FFC107';
+    div.style.color = '#FFE082';
+    div.innerHTML = '<strong>[🟡 ALERT]</strong> Missing: ' + step;
+    alertsEl.appendChild(div);
+  });
 
   // GENERAL ALERTS - Amber Alerts
   if (result.alerts && Array.isArray(result.alerts) && result.alerts.length > 0) {
@@ -318,10 +387,14 @@ async function startStreaming() {
     chrome.runtime.sendMessage({ type: 'connect' }, (response) => {
       if (response?.success) {
         isStreaming = true;
+        callEnded = false; // Reset call state
         stopBtn.disabled = false;
+        endCallBtn.disabled = false; // Enable End Call button
         updateStatus('connected');
         
-        // Activate visualizer
+        // Activate visualizer with message
+        const visualizer = document.getElementById('visualizer');
+        visualizer.setAttribute('data-message', '📞 Call In Progress... Keep going!');
         document.querySelectorAll('.bar').forEach(bar => bar.classList.add('active'));
       } else {
         throw new Error('Backend connection failed');
@@ -345,9 +418,33 @@ function stopStreaming() {
 }
 
 /**
+ * End the call - marks call as ended and shows final alerts
+ */
+function endCall() {
+  callEnded = true;
+  
+  // Update visualizer
+  const visualizer = document.getElementById('visualizer');
+  visualizer.setAttribute('data-message', '✅ Call Ended');
+  
+  // Re-render alerts to show missing closing steps
+  const lastResult = window.lastComplianceResult;
+  if (lastResult) {
+    updateComplianceUI(lastResult);
+  }
+  
+  // Disable End Call button after use
+  endCallBtn.disabled = true;
+  
+  console.log('📞 Call ended manually');
+}
+
+/**
  * Clean up audio resources
  */
 function cleanup() {
+  isStreaming = false;
+  
   if (workletNode) {
     workletNode.disconnect();
     workletNode = null;
@@ -369,11 +466,46 @@ function cleanup() {
   }
 
   stopBtn.disabled = true;
+  endCallBtn.disabled = true;
   startBtn.disabled = false;
   updateStatus('disconnected');
   
+  // Clear visualizer message
+  const visualizer = document.getElementById('visualizer');
+  visualizer.removeAttribute('data-message');
+  
   // Deactivate visualizer
   document.querySelectorAll('.bar').forEach(bar => bar.classList.remove('active'));
+}
+
+/**
+ * Reset UI - clear all transcripts and compliance data
+ */
+function resetUI() {
+  // Clear transcripts
+  transcriptCard.innerHTML = '<div class="no-transcript">Click "Start" to begin listening...</div>';
+  
+  // Clear persistent alert store
+  persistentAlerts.critical.clear();
+  persistentAlerts.risk.clear();
+  persistentAlerts.alert.clear();
+  persistentAlerts.completed = [];
+  
+  // Reset call state
+  callEnded = false;
+  window.lastComplianceResult = null;
+  
+  // Hide and clear compliance section
+  complianceSection.style.display = 'none';
+  complianceScore.textContent = '--';
+  complianceScore.style.color = '#4CAF50';
+  complianceAlerts.innerHTML = '';
+  
+  // Clear visualizer message
+  const visualizer = document.getElementById('visualizer');
+  visualizer.removeAttribute('data-message');
+  
+  console.log('✅ UI Reset - Transcripts and compliance cleared');
 }
 
 /**
@@ -404,6 +536,7 @@ chrome.runtime.onMessage.addListener((message) => {
       break;
 
     case 'compliance':
+      window.lastComplianceResult = message.data; // Store for End Call
       updateComplianceUI(message.data);
       break;
   }
@@ -412,6 +545,8 @@ chrome.runtime.onMessage.addListener((message) => {
 // Event listeners
 startBtn.addEventListener('click', startStreaming);
 stopBtn.addEventListener('click', stopStreaming);
+endCallBtn.addEventListener('click', endCall);
+resetBtn.addEventListener('click', resetUI);
 
 // Initialize
 updateStatus('disconnected');

@@ -114,6 +114,24 @@
       justify-content: center;
       gap: 4px;
       padding: 0 20px;
+      position: relative;
+    }
+    .visualizer::after {
+      content: attr(data-message);
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 13px;
+      font-weight: 600;
+      color: #64B5F6;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .visualizer[data-message]::after {
+      opacity: 1;
     }
     .bar {
       width: 4px;
@@ -156,22 +174,38 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
+      color: white;
     }
     .btn-start {
       background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
-      color: white;
     }
     .btn-start:hover:not(:disabled) {
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+      box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
     }
     .btn-stop {
-      background: linear-gradient(135deg, #f44336 0%, #da190b 100%);
-      color: white;
+      background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
     }
     .btn-stop:hover:not(:disabled) {
+      background: linear-gradient(135deg, #e53935 0%, #c62828 100%);
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+      box-shadow: 0 6px 20px rgba(244, 67, 54, 0.4);
+    }
+    .btn-reset {
+      background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    }
+    .btn-reset:hover:not(:disabled) {
+      background: linear-gradient(135deg, #fb8c00 0%, #ef6c00 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
+    }
+    .btn-end-call {
+      background: linear-gradient(135deg, #673ab7 0%, #512da8 100%);
+    }
+    .btn-end-call:hover:not(:disabled) {
+      background: linear-gradient(135deg, #5e35b1 0%, #4527a0 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(103, 58, 183, 0.4);
     }
     .btn:disabled {
       opacity: 0.5;
@@ -318,6 +352,12 @@
     </button>
     <button class="btn btn-stop" id="stopBtn" disabled>
       ⏹ Stop
+    </button>
+    <button class="btn btn-end-call" id="endCallBtn" disabled>
+      📞 End Call
+    </button>
+    <button class="btn btn-reset" id="resetBtn">
+      🔄 Reset
     </button>
   </div>
 

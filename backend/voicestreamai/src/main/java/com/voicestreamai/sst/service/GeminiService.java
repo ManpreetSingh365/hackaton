@@ -16,7 +16,6 @@ import org.json.JSONArray;
 
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
-import java.util.stream.Collectors;
 
 @Service
 public class GeminiService {
@@ -47,119 +46,161 @@ public class GeminiService {
             System.out.println("✅ Loaded callScript.json successfully");
         } catch (IOException e) {
             System.err.println("❌ Failed to load callScript.json: " + e.getMessage());
-            // Create default config to prevent null pointer
             callScriptConfig = new CallScriptConfig();
         }
     }
 
     /**
-     * Build dynamic AI prompt from callScript.json configuration
+     * Build dynamic AI prompt with realistic scoring and severity detection
      */
     private String buildPrompt(String transcript) {
         StringBuilder prompt = new StringBuilder();
 
-        prompt.append("You are analyzing a LIVE customer service call in REAL-TIME for compliance.\n\n");
+        prompt.append(
+                "You are monitoring a LIVE customer service call for real-time compliance and risk detection.\\n\\n");
 
-        prompt.append("**IMPORTANT SCORING RULES**:\n");
-        prompt.append("- Give PARTIAL CREDIT for steps completed so far (not 0% for incomplete calls)\n");
-        prompt.append("- Score should INCREASE as agent completes more requirements\n");
-        prompt.append("- Only check closing lines if transcript contains goodbye/thank you/closing words\n");
-        prompt.append("- Focus on what HAS been done, not just what's missing\n\n");
+        // Severity System
+        prompt.append("**ALERT SEVERITY LEVELS**:\\n");
+        prompt.append("🔴 CRITICAL (Immediate action required):\\n");
 
-        // Mandatory Steps
+        if (callScriptConfig.getConstraints() != null
+                && callScriptConfig.getConstraints().getCriticalViolations() != null) {
+            CallScriptConfig.Constraints.CriticalViolations critical = callScriptConfig.getConstraints()
+                    .getCriticalViolations();
+
+            if (critical.getHighRiskWords() != null && !critical.getHighRiskWords().isEmpty()) {
+                prompt.append("- High-risk: ").append(String.join(", ", critical.getHighRiskWords())).append("\\n");
+            }
+
+            if (critical.getSocialMediaThreats() != null && !critical.getSocialMediaThreats().isEmpty()) {
+                prompt.append("- Social media threats: ").append(String.join(", ", critical.getSocialMediaThreats()))
+                        .append("\\n");
+            }
+
+            if (critical.getRundeLanguage() != null && !critical.getRundeLanguage().isEmpty()) {
+                prompt.append("- Rude language: ").append(String.join(", ", critical.getRundeLanguage())).append("\\n");
+            }
+        }
+
+        prompt.append("\\n🟠 RISK (Escalation needed):\\n");
+        if (callScriptConfig.getConstraints() != null
+                && callScriptConfig.getConstraints().getRiskViolations() != null) {
+            CallScriptConfig.Constraints.RiskViolations risk = callScriptConfig.getConstraints().getRiskViolations();
+            if (risk.getPriorityCaseKeywords() != null && !risk.getPriorityCaseKeywords().isEmpty()) {
+                prompt.append("- Priority: ").append(String.join(", ", risk.getPriorityCaseKeywords())).append("\\n");
+            }
+        }
+
+        prompt.append("\\n🟡 ALERT: Missing mandatory steps\\n\\n");
+
+        // AI Context Analysis
+        prompt.append("**AI CONTEXT ANALYSIS** (Judge agent behavior):\\n");
+        prompt.append("Analyze HOW the agent is speaking, not just WHAT they say:\\n\\n");
+
+        prompt.append("✅ GOOD CONTEXT (Professional behavior):\\n");
+        prompt.append("- Polite, respectful tone\\n");
+        prompt.append("- Patient and understanding\\n");
+        prompt.append("- Clear communication\\n");
+        prompt.append("- Active listening cues (\\\"I understand\\\", \\\"Let me help\\\")\\n");
+        prompt.append("- Empathetic responses\\n\\n");
+
+        prompt.append("❌ BAD CONTEXT (Unprofessional behavior):\\n");
+        prompt.append("- Rude or dismissive tone\\n");
+        prompt.append("- Impatient or rushed\\n");
+        prompt.append("- Defensive or argumentative\\n");
+        prompt.append("- Ignoring customer concerns\\n");
+        prompt.append("- Sarcastic or condescending\\n\\n");
+
+        // Sample Critical Phrases
+        if (callScriptConfig.getSampleCriticalPhrases() != null &&
+                callScriptConfig.getSampleCriticalPhrases().getCustomerDisconnectionStatements() != null &&
+                !callScriptConfig.getSampleCriticalPhrases().getCustomerDisconnectionStatements().isEmpty()) {
+            prompt.append("**SAMPLE CRITICAL PHRASES** (Examples of BAD CONTEXT triggers):\\n");
+            for (String phrase : callScriptConfig.getSampleCriticalPhrases().getCustomerDisconnectionStatements()) {
+                prompt.append("- \\\"").append(phrase).append("\\\"\\n");
+            }
+            prompt.append(
+                    "If agent's behavior triggers customer frustration like these, mark context_quality as BAD\\n\\n");
+        }
+
+        // Realistic Scoring Formula
+        prompt.append("**REALISTIC PROGRESSIVE SCORING** (Award generously):\\n");
+        prompt.append("- Professional Greeting (20 pts)\\n");
+        prompt.append("- Active Engagement (10 pts)\\n");
+        prompt.append("- Mandatory Steps (49 pts total, 7 pts each):\\n");
+
         if (callScriptConfig.getMandatorySteps() != null && !callScriptConfig.getMandatorySteps().isEmpty()) {
-            prompt.append("**MANDATORY STEPS** (Agent must complete ALL of these):\n");
             for (int i = 0; i < callScriptConfig.getMandatorySteps().size(); i++) {
-                prompt.append((i + 1)).append(". ").append(callScriptConfig.getMandatorySteps().get(i)).append("\n");
+                prompt.append("  ").append(i + 1).append(". ").append(callScriptConfig.getMandatorySteps().get(i))
+                        .append(" (7 pts)\\n");
             }
-            prompt.append("\n");
         }
 
-        // Opening Lines Check
+        prompt.append("- Empathy Statements (10 pts)\\n");
+        prompt.append("- Professional Closing (11 pts)\\n");
+        prompt.append("- PENALTY: -30 pts for CRITICAL violations OR BAD context\\n\\n");
+
+        // Opening/Closing
         if (callScriptConfig.getOpeningLines() != null && !callScriptConfig.getOpeningLines().isEmpty()) {
-            prompt.append("**OPENING LINES** (Check at START of call):\n");
-            prompt.append("Expected: ").append(String.join(" OR ", callScriptConfig.getOpeningLines())).append("\n\n");
+            prompt.append("**OPENING** (check at start): ")
+                    .append(String.join(" OR ", callScriptConfig.getOpeningLines())).append("\\n\\n");
         }
 
-        // Closing Lines Check - contextualize
         if (callScriptConfig.getClosingLines() != null && !callScriptConfig.getClosingLines().isEmpty()) {
-            prompt.append("**CLOSING LINES** (ONLY check if call appears to be ending):\n");
-            prompt.append("Expected: ").append(String.join(" OR ", callScriptConfig.getClosingLines())).append("\n");
-            prompt.append("Note: Do NOT mark as missing if call is still ongoing\n\n");
+            prompt.append("**CLOSING** (only if call ending): ")
+                    .append(String.join(" OR ", callScriptConfig.getClosingLines())).append("\\n");
+            prompt.append("Note: Don't mark missing if call ongoing\\n\\n");
         }
 
-        // Constraints - PROACTIVE checking
-        if (callScriptConfig.getConstraints() != null) {
-            CallScriptConfig.Constraints c = callScriptConfig.getConstraints();
+        // Rules
+        prompt.append("**DETECTION RULES**:\\n");
+        prompt.append("1. Check CRITICAL violations FIRST\\n");
+        prompt.append("2. Analyze agent TONE and CONTEXT\\n");
+        prompt.append("3. Award points for every completed step\\n");
+        prompt.append("4. Be PRACTICAL and REALISTIC\\n\\n");
 
-            prompt.append("**CONSTRAINTS** (Check PROACTIVELY throughout call):\n");
+        // Output Format with Context Analysis
+        prompt.append("**OUTPUT** (valid JSON only):\\n");
+        prompt.append("{\\n");
+        prompt.append("  \\\"score\\\": <0-100>,\\n");
+        prompt.append("  \\\"status\\\": \\\"IN_PROGRESS\\\"|\\\"PASS\\\"|\\\"FAIL\\\",\\n");
+        prompt.append("  \\\"severity\\\": \\\"NORMAL\\\"|\\\"ALERT\\\"|\\\"RISK\\\"|\\\"CRITICAL\\\",\\n");
+        prompt.append("  \\\"completed_steps\\\": [<array>],\\n");
+        prompt.append("  \\\"missing_steps\\\": [<array>],\\n");
+        prompt.append("  \\\"critical_violations\\\": [<array>],\\n");
+        prompt.append("  \\\"risk_violations\\\": [<array>],\\n");
+        prompt.append("  \\\"alerts\\\": [<array>],\\n");
+        prompt.append("  \\\"high_risk_detected\\\": <boolean>,\\n");
+        prompt.append("  \\\"rude_language_detected\\\": <boolean>,\\n");
+        prompt.append("  \\\"social_media_threat_detected\\\": <boolean>,\\n");
+        prompt.append("  \\\"priority_case_detected\\\": <boolean>,\\n");
+        prompt.append("  \\\"empathy_count\\\": <number>,\\n");
+        prompt.append("  \\\"agent_tone\\\": \\\"PROFESSIONAL\\\" | \\\"NEUTRAL\\\" | \\\"UNPROFESSIONAL\\\",\\n");
+        prompt.append("  \\\"context_quality\\\": \\\"GOOD\\\" | \\\"ACCEPTABLE\\\" | \\\"BAD\\\",\\n");
+        prompt.append("  \\\"behavior_issues\\\": [<array of behavioral problems if any>]\\n");
+        prompt.append("}\\n\\n");
 
-            if (c.isNoAbusiveWords()) {
-                prompt.append("- No abusive or offensive language allowed\n");
-            }
+        prompt.append("**SEVERITY**:\\n");
+        prompt.append("CRITICAL if rude/social_media/high_risk OR context_quality=BAD | ");
+        prompt.append("RISK if priority | ALERT if missing_steps | NORMAL otherwise\\n\\n");
 
-            if (c.getNoHighRiskWords() != null && !c.getNoHighRiskWords().isEmpty()) {
-                prompt.append("- HIGH-RISK WORDS (IMMEDIATELY flag if detected): ")
-                        .append(String.join(", ", c.getNoHighRiskWords()))
-                        .append("\n");
-            }
+        prompt.append("**STATUS**:\\n");
+        prompt.append(
+                "IN_PROGRESS: ongoing | PASS: all done + good context | FAIL: critical violation OR bad context OR incomplete\\n\\n");
 
-            if (c.getPriorityCaseKeywords() != null && !c.getPriorityCaseKeywords().isEmpty()) {
-                prompt.append("- PRIORITY KEYWORDS (IMMEDIATELY escalate if detected): ")
-                        .append(String.join(", ", c.getPriorityCaseKeywords()))
-                        .append("\n");
-            }
-
-            if (c.getMinimumEmpathyCount() > 0) {
-                prompt.append("- Minimum empathy statements required: ").append(c.getMinimumEmpathyCount())
-                        .append(" (count how many found so far)\n");
-            }
-
-            prompt.append("\n");
-        }
-
-        // Scoring Instructions - PROGRESSIVE
-        prompt.append("**PROGRESSIVE SCORING FORMULA**:\n");
-        prompt.append("- Opening greeting present: +15 points\n");
-        prompt.append("- Each mandatory step completed: +10 points each (70 points total for 7 steps)\n");
-        prompt.append("- Empathy statement used: +5 points\n");
-        prompt.append("- Closing (if call ending): +10 points\n");
-        prompt.append("- SUBTRACT 20 points if high-risk words detected\n");
-        prompt.append("- Current score = points earned so far\n\n");
-
-        // Analysis Instructions
-        prompt.append("**ANALYSIS INSTRUCTIONS**:\n");
-        prompt.append("Analyze the transcript PROGRESSIVELY and return ONLY a valid JSON object:\n");
-        prompt.append("{\n");
-        prompt.append("  \"score\": <number 0-100 based on completed items so far>,\n");
-        prompt.append("  \"status\": \"IN_PROGRESS\" or \"PASS\" or \"FAIL\",\n");
-        prompt.append("  \"alerts\": [\"only critical warnings, not all missing steps\"],\n");
-        prompt.append("  \"high_risk_detected\": <boolean>,\n");
-        prompt.append("  \"priority_case_detected\": <boolean>,\n");
-        prompt.append("  \"completed_steps\": [\"array of mandatory steps COMPLETED so far\"],\n");
-        prompt.append("  \"missing_steps\": [\"array of mandatory steps NOT YET completed\"],\n");
-        prompt.append("  \"empathy_count\": <number of empathy statements found>\n");
-        prompt.append("}\n\n");
-
-        prompt.append("**STATUS LOGIC**:\n");
-        prompt.append("- IN_PROGRESS: Call is ongoing, not all steps complete yet\n");
-        prompt.append("- PASS: All mandatory steps + closing completed\n");
-        prompt.append("- FAIL: High-risk detected OR call ended without all steps\n\n");
-
-        prompt.append("**TRANSCRIPT TO ANALYZE** (current conversation so far):\n");
-        prompt.append("\"").append(transcript).append("\"\n");
+        prompt.append("**TRANSCRIPT**: \\\"").append(transcript).append("\\\"\\n\\n");
+        prompt.append("Be professional, practical, simple. Focus on TONE and CONTEXT, not just words.");
 
         return prompt.toString();
     }
 
     public String analyzeText(String transcript) {
         if (apiKey == null || apiKey.isEmpty() || "YOUR_GEMINI_API_KEY".equals(apiKey)) {
-            System.err.println("⚠️ Gemini API Key not configured. Set GEMINI_API_KEY environment variable.");
+            System.err.println("⚠️ Gemini API Key not configured.");
             return createErrorResponse("API key not configured");
         }
 
         try {
-            // Build dynamic prompt from callScript.json
             String prompt = buildPrompt(transcript);
 
             // Build JSON Request
@@ -190,9 +231,7 @@ public class GeminiService {
                     .getJSONObject(0)
                     .getString("text");
 
-            // Extract JSON from markdown code block if present
             resultText = extractJSON(resultText);
-
             return resultText.trim();
 
         } catch (Exception e) {
@@ -202,9 +241,6 @@ public class GeminiService {
         }
     }
 
-    /**
-     * Extract JSON from markdown code blocks
-     */
     private String extractJSON(String text) {
         if (text.contains("```json")) {
             int start = text.indexOf("```json") + 7;
@@ -222,18 +258,20 @@ public class GeminiService {
         return text;
     }
 
-    /**
-     * Create error response in expected JSON format
-     */
     private String createErrorResponse(String errorMessage) {
         JSONObject error = new JSONObject();
         error.put("score", 0);
         error.put("status", "IN_PROGRESS");
+        error.put("severity", "NORMAL");
         error.put("alerts", new JSONArray().put(errorMessage));
         error.put("high_risk_detected", false);
         error.put("priority_case_detected", false);
+        error.put("rude_language_detected", false);
+        error.put("social_media_threat_detected", false);
         error.put("completed_steps", new JSONArray());
         error.put("missing_steps", new JSONArray());
+        error.put("critical_violations", new JSONArray());
+        error.put("risk_violations", new JSONArray());
         error.put("empathy_count", 0);
         return error.toString();
     }

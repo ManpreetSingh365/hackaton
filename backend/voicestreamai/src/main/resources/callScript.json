@@ -1,6 +1,6 @@
 {
   "opening_lines": [
-    "Welcome to Zepto, How may i assist you today?."
+    "Welcome to Zepto, How may I assist you today?"
   ],
 
   "mandatory_steps": [
@@ -21,22 +21,73 @@
   "constraints": {
     "hold_time_limit_seconds": 15,
     "must_take_consent_before_hold": true,
-
     "no_abusive_words": true,
-    "no_high_risk_words": [
-      "suicide",
-      "consumer court",
-      "legal notice",
-      "social media"
-    ],
 
-    "priority_case_keywords": [
-      "P1",
-      "critical",
-      "urgent",
-      "immediately"
-    ],
+    "critical_violations": {
+      "high_risk_words": [
+        "suicide",
+        "consumer court",
+        "legal notice",
+        "lawyer",
+        "police",
+        "personal identity details",
+        "personal details",
+        "personal information",
+        "otp",
+        "password",
+        "pin",
+        "account details"
+      ],
+      "social_media_threats": [
+        "social media",
+        "Facebook",
+        "Twitter",
+        "Instagram",
+        "LinkedIn",
+        "WhatsApp",
+        "YouTube",
+        "TikTok",
+        "Reddit",
+        "fb",
+        "insta",
+        "tweet",
+        "post online",
+        "complain online",
+        "tell everyone"
+      ],
+      "rude_language": [
+        "stupid",
+        "idiot",
+        "fool",
+        "dumb",
+        "nonsense",
+        "rubbish",
+        "ridiculous",
+        "absurd",
+        "shut up",
+        "useless",
+        "pathetic",
+        "worst"
+      ]
+    },
+
+    "risk_violations": {
+      "priority_case_keywords": [
+        "P1",
+        "critical",
+        "urgent",
+        "immediately",
+        "emergency",
+        "asap"
+      ]
+    },
 
     "minimum_empathy_count": 1
+  },
+
+  "sample_critical_phrases": {
+    "customer_disconnection_statements": [
+      "Yeah, yeah… do whatever you want. I’m ending the call."
+    ]
   }
 }

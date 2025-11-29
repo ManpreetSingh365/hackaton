@@ -1,0 +1,32 @@
+{
+    "manifest_version": 3,
+    "name": "Agent Call Auditor - Hackathon MVP",
+    "version": "0.1",
+    "description": "Analyze agent voice (only) for politeness, keywords and short feedback.",
+    "permissions": [
+        "storage",
+        "activeTab",
+        "scripting"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "action": {
+        "default_popup": "popup.html",
+        "default_title": "Agent Auditor"
+    },
+    "background": {
+        "service_worker": "service_worker.js"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "content_script.js"
+            ],
+            "run_at": "document_idle"
+        }
+    ]
+}
