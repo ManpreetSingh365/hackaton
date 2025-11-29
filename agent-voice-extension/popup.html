@@ -229,6 +229,48 @@
       color: #4facfe;
       text-decoration: none;
     }
+    .compliance-card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .score-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .score-label {
+      font-size: 12px;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .score-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: #4CAF50;
+    }
+    .alerts-container {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .alert-item {
+      font-size: 13px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      background: rgba(255, 87, 34, 0.1);
+      color: #ffab91;
+      border-left: 3px solid #ff5722;
+    }
+    .alert-item.success {
+      background: rgba(76, 175, 80, 0.1);
+      color: #a5d6a7;
+      border-left-color: #4CAF50;
+    }
   </style>
 </head>
 <body>
@@ -245,6 +287,17 @@
     <div class="status-value disconnected" id="statusIndicator">
       <span class="status-dot red"></span>
       Disconnected
+    </div>
+  </div>
+
+  <!-- Script Compliance Section -->
+  <div id="complianceSection" class="compliance-card" style="display: none;">
+    <div class="score-header">
+      <span class="score-label">Script Score</span>
+      <span id="complianceScore" class="score-value">--</span>
+    </div>
+    <div id="complianceAlerts" class="alerts-container">
+      <!-- Alerts will appear here -->
     </div>
   </div>
 

@@ -33,17 +33,22 @@ function connect() {
     };
 
     websocket.onmessage = (event) => {
-      // Receive transcript from backend
-      let text = event.data;
-      
-      // Parse JSON if available
       try {
-        const parsed = JSON.parse(event.data);
-        text = parsed.text || event.data;
-      } catch {}
-
-      // Send to popup
-      chrome.runtime.sendMessage({ type: 'transcript', data: text }).catch(() => {});
+        // Parse the message from the backend
+        // Expected format: { type: "transcript"|"compliance", data: ... }
+        const message = JSON.parse(event.data);
+        
+        // Forward to popup with the same type
+        if (message.type && message.data) {
+          chrome.runtime.sendMessage(message).catch(() => {});
+        } else {
+          // Fallback for legacy/plain text messages
+          chrome.runtime.sendMessage({ type: 'transcript', data: event.data }).catch(() => {});
+        }
+      } catch (e) {
+        // Not JSON, treat as plain text transcript
+        chrome.runtime.sendMessage({ type: 'transcript', data: event.data }).catch(() => {});
+      }
     };
 
     websocket.onerror = (error) => {

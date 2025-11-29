@@ -1,0 +1,42 @@
+{
+  "opening_lines": [
+    "Welcome to Zepto, How may i assist you today?."
+  ],
+
+  "mandatory_steps": [
+    "Verify customer name",
+    "Verify registered mobile number",
+    "Authenticate customer (DOB or last 4 digits)",
+    "Use at least one empathy statement",
+    "Ask probing question to understand issue",
+    "Provide correct resolution",
+    "Summarize resolution before closing"
+  ],
+
+  "closing_lines": [
+    "Is there anything else I can assist you with?",
+    "Thank you for calling. Have a great day!"
+  ],
+
+  "constraints": {
+    "hold_time_limit_seconds": 15,
+    "must_take_consent_before_hold": true,
+
+    "no_abusive_words": true,
+    "no_high_risk_words": [
+      "suicide",
+      "consumer court",
+      "legal notice",
+      "social media"
+    ],
+
+    "priority_case_keywords": [
+      "P1",
+      "critical",
+      "urgent",
+      "immediately"
+    ],
+
+    "minimum_empathy_count": 1
+  }
+}
