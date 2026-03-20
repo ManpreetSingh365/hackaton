@@ -42,11 +42,11 @@ public class CallScriptConfig {
                 this.socialMediaThreats = value;
             }
 
-            public List<String> getRundeLanguage() {
+            public List<String> getRudeLanguage() {
                 return rudeLanguage;
             }
 
-            public void setRundeLanguage(List<String> value) {
+            public void setRudeLanguage(List<String> value) {
                 this.rudeLanguage = value;
             }
         }

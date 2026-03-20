@@ -77,8 +77,8 @@ public class GeminiService {
                         .append("\\n");
             }
 
-            if (critical.getRundeLanguage() != null && !critical.getRundeLanguage().isEmpty()) {
-                prompt.append("- Rude language: ").append(String.join(", ", critical.getRundeLanguage())).append("\\n");
+            if (critical.getRudeLanguage() != null && !critical.getRudeLanguage().isEmpty()) {
+                prompt.append("- Rude language: ").append(String.join(", ", critical.getRudeLanguage())).append("\\n");
             }
         }
 
